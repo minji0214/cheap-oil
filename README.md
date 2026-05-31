@@ -1,36 +1,90 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Fuel.IQ
 
-## Getting Started
+오피넷 API 기반 주변 최저가 주유소 탐색 앱.
 
-First, run the development server:
+## 주요 기능
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+- **주변 주유소 검색** — GPS 또는 지역 선택으로 반경 내 주유소 목록 조회
+- **유종 선택** — 휘발유(B027) / 경유(D047)
+- **최저가 하이라이트** — 지역 평균 대비 절감 금액 표시
+- **T맵 길안내** — 카드 탭으로 즉시 네비게이션 실행
+- **2분 캐시** — 동일 좌표·유종 요청은 서버 메모리에 캐시
+
+## 기술 스택
+
+- Next.js 16 (App Router)
+- React 19 + TypeScript
+- Tailwind CSS v4
+- lucide-react (아이콘)
+- proj4 (KATECH ↔ WGS84 좌표 변환)
+- 오피넷 API (한국석유공사)
+
+## 프로젝트 구조
+
+```
+src/
+├── app/
+│   ├── api/
+│   │   ├── stations/
+│   │   │   ├── route.ts          # GET /api/stations
+│   │   │   └── [stationId]/
+│   │   │       └── route.ts      # GET /api/stations/:id
+│   │   └── avg-price/
+│   │       └── route.ts          # GET /api/avg-price
+│   ├── layout.tsx
+│   ├── page.tsx
+│   └── globals.css
+├── components/
+│   └── fuel-iq-app.tsx           # 메인 UI 컴포넌트
+└── lib/
+    ├── types.ts                  # 공유 타입 정의
+    ├── opinet.ts                 # 오피넷 API 클라이언트
+    └── cache.ts                  # TTL 기반 인메모리 캐시
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 환경 변수
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+`.env.local` 파일을 생성하고 아래 값을 설정합니다.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```
+OPINET_API_KEY=your_opinet_api_key
+OPINET_DEFAULT_REGION_CODE=11   # 기본 지역 코드 (11 = 서울)
+```
 
-## Learn More
+오피넷 API 키는 [오피넷 공식 사이트](https://www.opinet.co.kr)에서 발급받을 수 있습니다.
 
-To learn more about Next.js, take a look at the following resources:
+## API
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### `GET /api/stations`
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+반경 내 주유소 목록과 가격 인사이트를 반환합니다.
 
-## Deploy on Vercel
+| 파라미터 | 타입 | 필수 | 설명 |
+|---|---|---|---|
+| `lat` | number | ✓ | 위도 |
+| `lng` | number | ✓ | 경도 |
+| `fuel` | `B027` \| `D047` | - | 유종 (기본값: `B027`) |
+| `radius` | number | - | 검색 반경 m, 500~5000 (기본값: 3000) |
+| `regionCode` | string | - | 지역 코드 (기본값: `11`) |
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### `GET /api/stations/:stationId`
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+주유소 상세 정보(세차·편의점·정비 여부, 전화번호)를 반환합니다.
+
+### `GET /api/avg-price`
+
+지역 평균 유가를 반환합니다.
+
+| 파라미터 | 타입 | 필수 | 설명 |
+|---|---|---|---|
+| `fuel` | `B027` \| `D047` | - | 유종 (기본값: `B027`) |
+| `regionCode` | string | - | 지역 코드 (기본값: `11`) |
+
+## 로컬 실행
+
+```bash
+pnpm install
+pnpm dev
+```
+
+[http://localhost:3000](http://localhost:3000)에서 확인합니다.
