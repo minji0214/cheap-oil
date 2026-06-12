@@ -106,6 +106,22 @@ type Coords = {
   lng: number;
 };
 
+async function reverseGeocode(lat: number, lng: number): Promise<string | null> {
+  try {
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=ko`,
+      { headers: { "User-Agent": "FuelIQ/1.0" } },
+    );
+    if (!res.ok) return null;
+    const data = (await res.json()) as { address?: Record<string, string> };
+    const a = data.address ?? {};
+    const parts = [a.neighbourhood ?? a.suburb, a.city_district ?? a.borough, a.city ?? a.county].filter(Boolean);
+    return parts.slice(0, 2).join(" ") || null;
+  } catch {
+    return null;
+  }
+}
+
 function readErrorMessage(payload: unknown): string | null {
   if (!payload || typeof payload !== "object") {
     return null;
@@ -142,12 +158,13 @@ export default function FuelIqApp() {
 
     navigator.geolocation.getCurrentPosition(
       (position) => {
+        const { latitude, longitude } = position.coords;
         setGeoDenied(false);
-        setCoords({
-          lat: position.coords.latitude,
-          lng: position.coords.longitude,
+        setCoords({ lat: latitude, lng: longitude });
+        setLocationLabel("위치 확인 중");
+        reverseGeocode(latitude, longitude).then((label) => {
+          setLocationLabel(label ?? "현재 위치");
         });
-        setLocationLabel("현재 위치");
       },
       () => {
         setGeoDenied(true);
